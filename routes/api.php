@@ -1,6 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\NotificationLogController;
 
-Route::post('/notifications', [NotificationController::class, 'store']);
+Route::post('/notifications', [NotificationLogController::class, 'store']);

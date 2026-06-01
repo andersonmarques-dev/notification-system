@@ -7,7 +7,7 @@ use App\Http\Requests\StoreNotificationLogRequest;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 
-class NotificationController extends Controller
+class NotificationLogController extends Controller
 {
     protected $notificationService;
 
