@@ -9,7 +9,7 @@ use Illuminate\Http\JsonResponse;
 
 class NotificationLogController extends Controller
 {
-    protected $notificationService;
+    protected NotificationService $notificationService;
 
     public function __construct(NotificationService $notificationService)
     {
