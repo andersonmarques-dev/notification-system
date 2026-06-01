@@ -40,7 +40,7 @@ class SendNotificationJob implements ShouldQueue
             Mail::to($this->log->recipient)->send($mailable);
 
             $this->log->update([
-                'status' => 'enviado',
+                'status' => 'sent',
             ]);
 
         } catch (Exception $e) {
