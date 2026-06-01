@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Mail\UserRegisteredMail;
 use Exception;
 use App\Models\NotificationLog;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,6 +33,7 @@ class SendNotificationJob implements ShouldQueue
     {
         try{
             $mailable = match($this->log->event_type) {
+                'usuario_cadastrado' => new UserRegisteredMail($this->log->payload),
                 default => throw new Exception("Tipo de Evento Desconhecido: {$this->log->event_type}"),
             };
 
