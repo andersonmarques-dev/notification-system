@@ -16,12 +16,8 @@ class NotificationLog extends Model
         'subject',
         'body',
         'content_type',
-        'payload',
         'status',
         'error_message',
-    ];
-    protected $casts = [
-        'payload' => 'array',
     ];
 
     protected static function booted()

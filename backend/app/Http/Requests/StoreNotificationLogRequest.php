@@ -23,10 +23,11 @@ class StoreNotificationLogRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'event_type' => ['required', 'string', 'max:255'],
-            'recipient' => ['required', 'email', 'max:255'],
-            'payload' => ['nullable', 'array', 'max:20'],
-            'payload.*' => ['nullable', 'string', 'max:255']
+            'recipient'    => ['required', 'email'],
+            'subject'      => ['required', 'string', 'max:255'],
+            'body'         => ['required', 'string'],
+            'content_type' => ['required', 'string', 'in:html,text'],
+            'event_type'   => ['nullable', 'string', 'max:100'],
         ];
     }
 }

@@ -8,13 +8,9 @@ use App\Models\NotificationLog;
 class NotificationService
 {
 
-    public function processNewNotification(array $data): NotificationLog {
-        $log = NotificationLog::create([
-            'event_type' => $data['event_type'],
-            'recipient' => $data['recipient'],
-            'payload' => $data['payload'],
-            'status' => 'pending',
-        ]);
+    public function processNewNotification(array $data): NotificationLog
+    {
+        $log = NotificationLog::create($data);
 
         SendNotificationJob::dispatch($log);
 
