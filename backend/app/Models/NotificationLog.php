@@ -12,11 +12,13 @@ class NotificationLog extends Model
     protected $fillable = [
         'event_type',
         'recipient',
+        'subject',
+        'body',
+        'content_type',
         'payload',
         'status',
         'error_message',
     ];
-
     protected $casts = [
         'payload' => 'array',
     ];
