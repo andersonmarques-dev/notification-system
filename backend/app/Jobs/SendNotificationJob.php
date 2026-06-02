@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Mail\OrderConfirmedMail;
+use App\Mail\PasswordResetMail;
 use App\Mail\UserRegisteredMail;
 use Exception;
 use App\Models\NotificationLog;
@@ -34,6 +36,8 @@ class SendNotificationJob implements ShouldQueue
         try{
             $mailable = match($this->log->event_type) {
                 'usuario_cadastrado' => new UserRegisteredMail($this->log->payload),
+                'pedido_confirmado' => new OrderConfirmedMail($this->log->payload),
+                'senha_recuperada' => new PasswordResetMail($this->log->payload),
                 default => throw new Exception("Tipo de Evento Desconhecido: {$this->log->event_type}"),
             };
 
