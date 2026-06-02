@@ -12,6 +12,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class SendNotificationJob implements ShouldQueue
@@ -33,6 +34,7 @@ class SendNotificationJob implements ShouldQueue
      */
     public function handle(): void
     {
+        Log::error($this->log->event_type);
         try{
             $mailable = match($this->log->event_type) {
                 'usuario_cadastrado' => new UserRegisteredMail($this->log->payload),
