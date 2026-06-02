@@ -2,17 +2,13 @@
 
 namespace App\Jobs;
 
-use App\Mail\OrderConfirmedMail;
-use App\Mail\PasswordResetMail;
-use App\Mail\UserRegisteredMail;
-use Exception;
+use App\Mail\DynamicNotificationMail;
 use App\Models\NotificationLog;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class SendNotificationJob implements ShouldQueue
@@ -34,28 +30,16 @@ class SendNotificationJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Log::error($this->log->event_type);
-        try{
-            $mailable = match($this->log->event_type) {
-                'usuario_cadastrado' => new UserRegisteredMail($this->log->payload),
-                'pedido_confirmado' => new OrderConfirmedMail($this->log->payload),
-                'senha_recuperada' => new PasswordResetMail($this->log->payload),
-                default => throw new Exception("Tipo de Evento Desconhecido: {$this->log->event_type}"),
-            };
-
+        try {
+            $mailable = new DynamicNotificationMail($this->log);
             Mail::to($this->log->recipient)->send($mailable);
 
-            $this->log->update([
-                'status' => 'sent',
-            ]);
-
-        } catch (Exception $e) {
+            $this->log->update(['status' => 'sent']);
+        } catch (\Throwable $e) {
             $this->log->update([
                 'status' => 'failed',
-                'error_message' => $e->getMessage(),
+                'error_message' => $e->getMessage()
             ]);
-
-            throw $e;
         }
     }
 }
