@@ -37,11 +37,16 @@ class DynamicNotificationMail extends Mailable
                 ->view('emails.master_layout')
                 ->text('emails.text_layout')
                 ->with([
-                    'body'     => $htmlBody,       // HTML com os <p>
-                    'textBody' => $this->log->body // texto puro para a view de texto
+                    'body'     => $htmlBody,
+                    'textBody' => $this->log->body
                 ]);
         }
-        return $mail->view('emails.master_layout')->with(['body' => $this->log->body])
-            ->text('emails.text_layout')->with(['body' => strip_tags($this->log->body)]);
+        return $mail
+            ->view('emails.master_layout')
+            ->text('emails.text_layout')
+            ->with([
+                'body'     => $this->log->body,
+                'textBody' => strip_tags($this->log->body)
+            ]);
     }
 }
