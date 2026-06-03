@@ -23,9 +23,25 @@ class DynamicNotificationMail extends Mailable
         $mail = $this->subject($this->log->subject ?? 'Notificação');
 
         if ($this->log->content_type === 'text') {
-            return $mail->text('emails.text_layout')->with(['body' => $this->log->body]);
-        }
+            $lines = preg_split("/\r\n|\n|\r/", $this->log->body);
+            $htmlBody = '';
 
-        return $mail->view('emails.master_layout')->with(['body' => $this->log->body]);
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (!empty($line)) {
+                    $htmlBody .= "<p style=\"margin-top: 0; margin-bottom: 16px;\">{$line}</p>";
+                }
+            }
+
+            return $mail
+                ->view('emails.master_layout')
+                ->text('emails.text_layout')
+                ->with([
+                    'body'     => $htmlBody,       // HTML com os <p>
+                    'textBody' => $this->log->body // texto puro para a view de texto
+                ]);
+        }
+        return $mail->view('emails.master_layout')->with(['body' => $this->log->body])
+            ->text('emails.text_layout')->with(['body' => strip_tags($this->log->body)]);
     }
 }
