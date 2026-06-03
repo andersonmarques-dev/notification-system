@@ -5,35 +5,29 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 const API = 'http://localhost:8000/api/notifications'
 
 const EVENT_COLORS = {
-  email:   '#378ADD',
-  sms:     '#1D9E75',
-  push:    '#7F77DD',
+  email: '#378ADD',
+  sms: '#1D9E75',
+  push: '#7F77DD',
   webhook: '#D85A30',
 }
 
 const STATUS_META = {
-  sent:    { bg: '#E1F5EE', color: '#0F6E56', label: 'Enviado' },
-  failed:  { bg: '#FCEBEB', color: '#A32D2D', label: 'Falha' },
+  sent: { bg: '#E1F5EE', color: '#0F6E56', label: 'Enviado' },
+  failed: { bg: '#FCEBEB', color: '#A32D2D', label: 'Falha' },
   pending: { bg: '#FAEEDA', color: '#854F0B', label: 'Pendente' },
 }
 
-const PAYLOAD_TEMPLATES = {
-  usuario_cadastrado: { nome: 'João Silva' },
-  pedido_confirmado:  { nome: 'João Silva', numero_pedido: '12345' },
-  senha_recuperada:   { nome: 'João Silva', codigo: '987654' },
-}
-
 const FILTERS = [
-  { key: 'all',     label: 'Todos' },
-  { key: 'sent',    label: 'Enviados' },
-  { key: 'failed',  label: 'Falhas' },
+  { key: 'all', label: 'Todos' },
+  { key: 'sent', label: 'Enviados' },
+  { key: 'failed', label: 'Falhas' },
   { key: 'pending', label: 'Pendentes' },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getEventColor(type = '') {
-  const t = type.toLowerCase()
+  const t = (type ?? '').toLowerCase()
   for (const [key, color] of Object.entries(EVENT_COLORS)) {
     if (t.includes(key)) return color
   }
@@ -74,51 +68,53 @@ function StatCard({ label, value, color }) {
   )
 }
 
-// ─── Modal ────────────────────────────────────────────────────────────────────
-// Rendered inline (não usa position:fixed) — evita problemas em iframes
+// ─── Form ─────────────────────────────────────────────────────────────────────
 
 function NewNotificationForm({ onClose, onSuccess }) {
-  const [eventType, setEventType] = useState('usuario_cadastrado')
-  const [recipient, setRecipient]  = useState('')
-  const [payload, setPayload]      = useState(JSON.stringify(PAYLOAD_TEMPLATES.usuario_cadastrado, null, 2))
-  const [submitting, setSubmitting] = useState(false)
-  const [formError, setFormError]   = useState(null)
-
-  function handleEventChange(e) {
-    const val = e.target.value
-    setEventType(val)
-    setPayload(JSON.stringify(PAYLOAD_TEMPLATES[val] ?? {}, null, 2))
-  }
+  const [eventType, setEventType] = useState('');
+  const [recipient, setRecipient] = useState('');
+  const [subject, setSubject] = useState('');
+  const [contentType, setContentType] = useState('html');
+  const [body, setBody] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState(null);
 
   async function handleSubmit(e) {
-    e.preventDefault()
-    setFormError(null)
+    e.preventDefault();
+    setFormError(null);
+    setSubmitting(true);
 
-    let parsedPayload
-    try {
-      parsedPayload = JSON.parse(payload)
-    } catch {
-      setFormError('Payload inválido — verifique as aspas e as vírgulas.')
-      return
-    }
-
-    setSubmitting(true)
     try {
       const res = await fetch(API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ event_type: eventType, recipient, payload: parsedPayload }),
-      })
+        body: JSON.stringify({
+          event_type: eventType.trim() !== '' ? eventType.trim() : null,
+          recipient: recipient,
+          subject: subject,
+          content_type: contentType,
+          body: body,
+        }),
+      });
+
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.message || 'Erro ao comunicar com a API.')
+        const errData = await res.json().catch(() => ({}));
+
+        // Tratamento específico para erros de validação do Laravel (422)
+        if (res.status === 422 && errData.errors) {
+          const validationMessages = Object.values(errData.errors).flat().join(' | ');
+          throw new Error(`Validação: ${validationMessages}`);
+        }
+
+        throw new Error(errData.message || 'Erro ao comunicar com a API.');
       }
-      onSuccess()
-      onClose()
+
+      onSuccess();
+      onClose();
     } catch (err) {
-      setFormError(err.message)
+      setFormError(err.message);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
@@ -127,8 +123,11 @@ function NewNotificationForm({ onClose, onSuccess }) {
     border: '0.5px solid #ccc', fontFamily: 'inherit',
     fontSize: 13, boxSizing: 'border-box', background: '#fff',
     color: '#111', outline: 'none',
-  }
-  const labelStyle = { display: 'block', fontSize: 11, color: '#888', marginBottom: 5, letterSpacing: '0.03em', textTransform: 'lowercase' }
+  };
+  const labelStyle = {
+    display: 'block', fontSize: 11, color: '#888',
+    marginBottom: 5, letterSpacing: '0.03em', textTransform: 'lowercase',
+  };
 
   return (
     <div style={{
@@ -154,20 +153,39 @@ function NewNotificationForm({ onClose, onSuccess }) {
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div>
-          <label style={labelStyle}>tipo de evento</label>
-          <select value={eventType} onChange={handleEventChange} style={inputStyle}>
-            <option value="usuario_cadastrado">Usuário Cadastrado</option>
-            <option value="pedido_confirmado">Pedido Confirmado</option>
-            <option value="senha_recuperada">Senha Recuperada</option>
-          </select>
+
+        {/* Marcador + Tipo lado a lado */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <label style={labelStyle}>marcador (opcional)</label>
+            <input
+              type="text"
+              value={eventType}
+              onChange={e => setEventType(e.target.value)}
+              placeholder="Ex: alerta_venda"
+              style={inputStyle}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={labelStyle}>tipo</label>
+            <select
+              value={contentType}
+              onChange={e => setContentType(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="html">HTML</option>
+              <option value="text">Texto Plano</option>
+            </select>
+          </div>
         </div>
 
         <div>
           <label style={labelStyle}>e-mail do destinatário</label>
           <input
-            type="email" value={recipient} required
+            type="email"
+            value={recipient}
             onChange={e => setRecipient(e.target.value)}
+            required
             placeholder="email@exemplo.com"
             style={inputStyle}
             onKeyDown={e => e.key === 'Enter' && e.preventDefault()}
@@ -175,17 +193,33 @@ function NewNotificationForm({ onClose, onSuccess }) {
         </div>
 
         <div>
-          <label style={labelStyle}>payload (JSON)</label>
+          <label style={labelStyle}>assunto</label>
+          <input
+            type="text"
+            value={subject}
+            onChange={e => setSubject(e.target.value)}
+            required
+            placeholder="Assunto do e-mail"
+            style={inputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={labelStyle}>corpo da mensagem</label>
           <textarea
-            value={payload} rows={4}
-            onChange={e => setPayload(e.target.value)}
+            value={body}
+            onChange={e => setBody(e.target.value)}
+            required
+            rows={6}
+            placeholder={contentType === 'html' ? '<h1>Título</h1>\n<p>Texto</p>' : 'Digite o texto aqui...'}
             style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12, resize: 'vertical' }}
           />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
           <button
-            type="button" onClick={onClose}
+            type="button"
+            onClick={onClose}
             style={{ padding: '7px 16px', borderRadius: 6, border: '0.5px solid #ccc', background: 'transparent', color: '#666', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
           >
             Cancelar
@@ -200,18 +234,18 @@ function NewNotificationForm({ onClose, onSuccess }) {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
 export default function NotificationPanel() {
-  const [logs, setLogs]         = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState(null)
-  const [filter, setFilter]     = useState('all')
+  const [logs, setLogs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [filter, setFilter] = useState('all')
   const [showForm, setShowForm] = useState(false)
-  const pollingRef              = useRef(null)
+  const pollingRef = useRef(null)
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -249,9 +283,9 @@ export default function NotificationPanel() {
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const filtered = filter === 'all' ? logs : logs.filter(l => l.status === filter)
-  const pending  = logs.filter(l => l.status === 'pending').length
-  const sent     = logs.filter(l => l.status === 'sent').length
-  const failed   = logs.filter(l => l.status === 'failed').length
+  const pending = logs.filter(l => l.status === 'pending').length
+  const sent = logs.filter(l => l.status === 'sent').length
+  const failed = logs.filter(l => l.status === 'failed').length
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -268,13 +302,13 @@ export default function NotificationPanel() {
               : error
                 ? 'Erro ao carregar dados'
                 : <>
-                    {logs.length} registro{logs.length !== 1 ? 's' : ''}
-                    {pending > 0 && (
-                      <span style={{ marginLeft: 8, fontSize: 11, color: '#854F0B' }}>
-                        · {pending} pendente{pending !== 1 ? 's' : ''} — atualizando automaticamente
-                      </span>
-                    )}
-                  </>
+                  {logs.length} registro{logs.length !== 1 ? 's' : ''}
+                  {pending > 0 && (
+                    <span style={{ marginLeft: 8, fontSize: 11, color: '#854F0B' }}>
+                      · {pending} pendente{pending !== 1 ? 's' : ''} — atualizando automaticamente
+                    </span>
+                  )}
+                </>
             }
           </p>
         </div>
@@ -312,9 +346,9 @@ export default function NotificationPanel() {
       {/* Stats */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
         <StatCard label="total de registros" value={loading ? '—' : logs.length} />
-        <StatCard label="entregues"           value={loading ? '—' : sent}    color="#1D9E75" />
-        <StatCard label="com falha"           value={loading ? '—' : failed}  color="#E24B4A" />
-        <StatCard label="pendentes"           value={loading ? '—' : pending} color={pending > 0 ? '#BA7517' : undefined} />
+        <StatCard label="entregues" value={loading ? '—' : sent} color="#1D9E75" />
+        <StatCard label="com falha" value={loading ? '—' : failed} color="#E24B4A" />
+        <StatCard label="pendentes" value={loading ? '—' : pending} color={pending > 0 ? '#BA7517' : undefined} />
       </div>
 
       {/* Filters */}
@@ -327,8 +361,8 @@ export default function NotificationPanel() {
               fontSize: 12, padding: '5px 12px', borderRadius: 20,
               border: '0.5px solid',
               borderColor: filter === f.key ? '#111' : '#ccc',
-              background:  filter === f.key ? '#111' : 'transparent',
-              color:       filter === f.key ? '#fff' : '#888',
+              background: filter === f.key ? '#111' : 'transparent',
+              color: filter === f.key ? '#fff' : '#888',
               cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
             }}
           >
