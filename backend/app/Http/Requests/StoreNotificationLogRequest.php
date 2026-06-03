@@ -3,7 +3,10 @@
 namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Override;
 
 class StoreNotificationLogRequest extends FormRequest
 {
@@ -28,6 +31,19 @@ class StoreNotificationLogRequest extends FormRequest
             'body'         => ['required', 'string'],
             'content_type' => ['required', 'string', 'in:html,text'],
             'event_type'   => ['nullable', 'string', 'max:100'],
+            'webhook_url'  => ['nullable', 'url', 'max:255'],
         ];
+    }
+
+    #[Override]
+    protected function failedValidation(Validator $validator)
+    {
+        throw new HttpResponseException(response()->json([
+            'error' => [
+                'code' => 'VALIDATION_FAILED',
+                'message' => 'Os dados informados são inválidos',
+                'details' => $validator->errors()
+            ]
+        ], 422));
     }
 }

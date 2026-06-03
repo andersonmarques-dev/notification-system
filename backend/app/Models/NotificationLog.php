@@ -18,6 +18,7 @@ class NotificationLog extends Model
         'content_type',
         'status',
         'error_message',
+        'webhook_url'
     ];
 
     protected static function booted()

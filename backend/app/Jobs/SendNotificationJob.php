@@ -4,12 +4,14 @@ namespace App\Jobs;
 
 use App\Mail\DynamicNotificationMail;
 use App\Models\NotificationLog;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Bus\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Http;
+use Throwable;
 
 class SendNotificationJob implements ShouldQueue
 {
@@ -17,29 +19,46 @@ class SendNotificationJob implements ShouldQueue
 
     public NotificationLog $log;
 
-    /**
-     * Create a new job instance.
-     */
     public function __construct(NotificationLog $log)
     {
         $this->log = $log;
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
         try {
-            $mailable = new DynamicNotificationMail($this->log);
-            Mail::to($this->log->recipient)->send($mailable);
+            Mail::to($this->log->recipient)->send(new DynamicNotificationMail($this->log));
 
             $this->log->update(['status' => 'sent']);
-        } catch (\Throwable $e) {
+
+            $this->dispatchWebhook('success', 'E-mail enviado com sucesso.');
+        } catch (Throwable $e) {
             $this->log->update([
                 'status' => 'failed',
                 'error_message' => $e->getMessage()
             ]);
+
+            $this->dispatchWebhook('failed', $e->getMessage());
+
+            throw $e;
+        }
+    }
+
+    protected function dispatchWebhook(string $status, string $message): void
+    {
+        if (!$this->log->webhook_url) {
+            return;
+        }
+
+        try {
+            Http::timeout(5)->post($this->log->webhook_url, [
+                'log_id'     => $this->log->id,
+                'status'     => $status,
+                'event_type' => $this->log->event_type,
+                'message'    => $message,
+                'timestamp'  => now()->toIso8601String(),
+            ]);
+        } catch (Throwable $e) {
         }
     }
 }
