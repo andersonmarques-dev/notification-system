@@ -73,6 +73,7 @@ function NewNotificationForm({ onClose, onSuccess }) {
   const [subject, setSubject] = useState('');
   const [contentType, setContentType] = useState('html');
   const [body, setBody] = useState('');
+  const [webhookUrl, setWebhookUrl] = useState(''); // 1. Estado adicionado
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
 
@@ -88,6 +89,7 @@ function NewNotificationForm({ onClose, onSuccess }) {
         subject: subject,
         content_type: contentType,
         body: body,
+        webhook_url: webhookUrl.trim() !== '' ? webhookUrl.trim() : null, // 2. Injetado no payload
       });
 
       onSuccess();
@@ -108,7 +110,7 @@ function NewNotificationForm({ onClose, onSuccess }) {
       setSubmitting(false);
     }
   }
-  
+
   const inputStyle = {
     width: '100%', padding: '8px 10px', borderRadius: 6,
     border: '0.5px solid #ccc', fontFamily: 'inherit',
@@ -191,6 +193,18 @@ function NewNotificationForm({ onClose, onSuccess }) {
             onChange={e => setSubject(e.target.value)}
             required
             placeholder="Assunto do e-mail"
+            style={inputStyle}
+          />
+        </div>
+
+        {/* 3. Campo de webhook adicionado abaixo do assunto */}
+        <div>
+          <label style={labelStyle}>url do webhook (opcional)</label>
+          <input
+            type="url"
+            value={webhookUrl}
+            onChange={e => setWebhookUrl(e.target.value)}
+            placeholder="https://webhook.site/seu-id-unico"
             style={inputStyle}
           />
         </div>
