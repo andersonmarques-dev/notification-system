@@ -29,7 +29,7 @@ class DynamicNotificationMail extends Mailable
             foreach ($lines as $line) {
                 $line = trim($line);
                 if (!empty($line)) {
-                    $htmlBody .= "<p style=\"margin-top: 0; margin-bottom: 16px;\">{$line}</p>";
+                    $htmlBody .= "<p style=\"margin-top: 0; margin-bottom: 16px;\">" . e($line) . "</p>";
                 }
             }
 

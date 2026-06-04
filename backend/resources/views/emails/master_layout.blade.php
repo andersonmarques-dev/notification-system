@@ -77,7 +77,7 @@
                                 line-height: 1.75;
                                 color: #374151;
                             ">
-                                {!! $textBody !!}
+                                {!! $body !!}
                             </div>
                         </td>
                     </tr>
