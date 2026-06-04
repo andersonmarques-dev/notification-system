@@ -1,8 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const API = 'http://localhost:8000/api/notifications'
+import api from './api'
 
 const EVENT_COLORS = {
   email: '#378ADD',
@@ -85,39 +82,33 @@ function NewNotificationForm({ onClose, onSuccess }) {
     setSubmitting(true);
 
     try {
-      const res = await fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          event_type: eventType.trim() !== '' ? eventType.trim() : null,
-          recipient: recipient,
-          subject: subject,
-          content_type: contentType,
-          body: body,
-        }),
+      await api.post('/notifications', {
+        event_type: eventType.trim() !== '' ? eventType.trim() : null,
+        recipient: recipient,
+        subject: subject,
+        content_type: contentType,
+        body: body,
       });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-
-        // Tratamento específico para erros de validação do Laravel (422)
-        if (res.status === 422 && errData.errors) {
-          const validationMessages = Object.values(errData.errors).flat().join(' | ');
-          throw new Error(`Validação: ${validationMessages}`);
-        }
-
-        throw new Error(errData.message || 'Erro ao comunicar com a API.');
-      }
 
       onSuccess();
       onClose();
     } catch (err) {
-      setFormError(err.message);
+      // Tratamento de erro específico para a arquitetura que criamos no backend
+      if (err.response && err.response.status === 422) {
+        const errorDetails = err.response.data.error?.details;
+        if (errorDetails) {
+          const validationMessages = Object.values(errorDetails).flat().join(' | ');
+          setFormError(`Validação: ${validationMessages}`);
+          return;
+        }
+      }
+
+      setFormError(err.response?.data?.error?.message || err.message || 'Erro ao comunicar com a API.');
     } finally {
       setSubmitting(false);
     }
   }
-
+  
   const inputStyle = {
     width: '100%', padding: '8px 10px', borderRadius: 6,
     border: '0.5px solid #ccc', fontFamily: 'inherit',
@@ -253,12 +244,11 @@ export default function NotificationPanel() {
     if (!silent) setLoading(true)
     setError(null)
     try {
-      const res = await fetch(API)
-      if (!res.ok) throw new Error('Não foi possível conectar ao servidor. Verifique se a API está rodando.')
-      const data = await res.json()
-      setLogs(data.data ?? [])
+      // O Axios injeta o Bearer token automaticamente aqui
+      const res = await api.get('/notifications')
+      setLogs(res.data.data ?? []) // O Laravel paginação envelopa os itens em 'data'
     } catch (err) {
-      setError(err.message)
+      setError(err.response?.data?.message || 'Não foi possível conectar ao servidor.')
     } finally {
       setLoading(false)
     }
