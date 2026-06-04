@@ -19,13 +19,16 @@ class NotificationLogController extends Controller
 
     public function index(): JsonResponse
     {
-        $logs = NotificationLog::orderBy('created_at', 'desc')->paginate(15);
+        $logs = request()->user()->notificationLogs()->orderBy('created_at', 'desc')->paginate(15);
         return response()->json($logs, 200);
     }
 
     public function store(StoreNotificationLogRequest $request): JsonResponse
     {
-        $log = $this->notificationService->processNewNotification($request->validated());
+
+        $data = $request->validated();
+        $data['tenant_id'] = $request->user()->id();
+        $log = $this->notificationService->processNewNotification($data);
 
         return response()->json([
             'message' => 'Evento recebido com sucesso e enfileirado.',
