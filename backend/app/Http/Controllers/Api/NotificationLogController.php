@@ -27,7 +27,7 @@ class NotificationLogController extends Controller
     {
 
         $data = $request->validated();
-        $data['tenant_id'] = $request->user()->id();
+        $data['tenant_id'] = $request->user()->id;
         $log = $this->notificationService->processNewNotification($data);
 
         return response()->json([

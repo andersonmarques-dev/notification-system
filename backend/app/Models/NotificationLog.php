@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Model;
 use Override;
 
@@ -18,7 +19,8 @@ class NotificationLog extends Model
         'content_type',
         'status',
         'error_message',
-        'webhook_url'
+        'webhook_url',
+        'tenant_id'
     ];
 
     protected static function booted()
