@@ -2,24 +2,27 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import api from './api'
 
 const EVENT_COLORS = {
-  email: '#378ADD',
+  email: '#4f46e5',
   sms: '#1D9E75',
   push: '#7F77DD',
   webhook: '#D85A30',
 }
 
 const STATUS_META = {
-  sent: { bg: '#E1F5EE', color: '#0F6E56', label: 'Enviado' },
-  failed: { bg: '#FCEBEB', color: '#A32D2D', label: 'Falha' },
-  pending: { bg: '#FAEEDA', color: '#854F0B', label: 'Pendente' },
+  sent:    { bg: '#E1F5EE', color: '#0F6E56', label: 'Enviado' },
+  failed:  { bg: '#FCEBEB', color: '#A32D2D', label: 'Falha' },
+  pending: { bg: '#EEF2FF', color: '#4338CA', label: 'Pendente' },
 }
 
 const FILTERS = [
-  { key: 'all', label: 'Todos' },
-  { key: 'sent', label: 'Enviados' },
-  { key: 'failed', label: 'Falhas' },
+  { key: 'all',     label: 'Todos' },
+  { key: 'sent',    label: 'Enviados' },
+  { key: 'failed',  label: 'Falhas' },
   { key: 'pending', label: 'Pendentes' },
 ]
+
+// Gradiente do e-mail
+const GRAD = 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -28,7 +31,7 @@ function getEventColor(type = '') {
   for (const [key, color] of Object.entries(EVENT_COLORS)) {
     if (t.includes(key)) return color
   }
-  return '#888780'
+  return '#a5b4fc'
 }
 
 function formatDate(iso) {
@@ -46,9 +49,9 @@ function Badge({ status }) {
   return (
     <span style={{
       display: 'inline-block',
-      fontSize: 10, fontWeight: 500,
-      letterSpacing: '0.05em', textTransform: 'uppercase',
-      padding: '3px 8px', borderRadius: 20,
+      fontSize: 10, fontWeight: 600,
+      letterSpacing: '0.06em', textTransform: 'uppercase',
+      padding: '3px 9px', borderRadius: 20,
       background: meta.bg, color: meta.color,
     }}>
       {meta.label}
@@ -58,9 +61,16 @@ function Badge({ status }) {
 
 function StatCard({ label, value, color }) {
   return (
-    <div style={{ background: '#f5f5f3', borderRadius: 8, padding: '14px 16px', flex: 1 }}>
-      <div style={{ fontSize: 11, color: '#888', marginBottom: 6, letterSpacing: '0.02em' }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 500, color: color ?? '#111' }}>{value}</div>
+    <div style={{
+      background: '#fff',
+      borderRadius: 12,
+      padding: '16px 18px',
+      flex: 1,
+      boxShadow: '0 1px 4px rgba(79,70,229,0.07)',
+      border: '1px solid #ede9fe',
+    }}>
+      <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 600, color: color ?? '#1e1b4b' }}>{value}</div>
     </div>
   )
 }
@@ -68,104 +78,92 @@ function StatCard({ label, value, color }) {
 // ─── Form ─────────────────────────────────────────────────────────────────────
 
 function NewNotificationForm({ onClose, onSuccess }) {
-  const [eventType, setEventType] = useState('');
-  const [recipient, setRecipient] = useState('');
-  const [subject, setSubject] = useState('');
-  const [contentType, setContentType] = useState('html');
-  const [body, setBody] = useState('');
-  const [webhookUrl, setWebhookUrl] = useState(''); // 1. Estado adicionado
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState(null);
+  const [eventType,   setEventType]   = useState('')
+  const [recipient,   setRecipient]   = useState('')
+  const [subject,     setSubject]     = useState('')
+  const [contentType, setContentType] = useState('html')
+  const [body,        setBody]        = useState('')
+  const [webhookUrl,  setWebhookUrl]  = useState('')
+  const [submitting,  setSubmitting]  = useState(false)
+  const [formError,   setFormError]   = useState(null)
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setFormError(null);
-    setSubmitting(true);
-
+    e.preventDefault()
+    setFormError(null)
+    setSubmitting(true)
     try {
       await api.post('/notifications', {
-        event_type: eventType.trim() !== '' ? eventType.trim() : null,
-        recipient: recipient,
-        subject: subject,
+        event_type:   eventType.trim()   !== '' ? eventType.trim()   : null,
+        recipient,
+        subject,
         content_type: contentType,
-        body: body,
-        webhook_url: webhookUrl.trim() !== '' ? webhookUrl.trim() : null, // 2. Injetado no payload
-      });
-
-      onSuccess();
-      onClose();
+        body,
+        webhook_url:  webhookUrl.trim()  !== '' ? webhookUrl.trim()  : null,
+      })
+      onSuccess()
+      onClose()
     } catch (err) {
-      // Tratamento de erro específico para a arquitetura que criamos no backend
-      if (err.response && err.response.status === 422) {
-        const errorDetails = err.response.data.error?.details;
-        if (errorDetails) {
-          const validationMessages = Object.values(errorDetails).flat().join(' | ');
-          setFormError(`Validação: ${validationMessages}`);
-          return;
+      if (err.response?.status === 422) {
+        const details = err.response.data.error?.details
+        if (details) {
+          setFormError(`Validação: ${Object.values(details).flat().join(' | ')}`)
+          return
         }
       }
-
-      setFormError(err.response?.data?.error?.message || err.message || 'Erro ao comunicar com a API.');
+      setFormError(err.response?.data?.error?.message || err.message || 'Erro ao comunicar com a API.')
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
   }
 
   const inputStyle = {
-    width: '100%', padding: '8px 10px', borderRadius: 6,
-    border: '0.5px solid #ccc', fontFamily: 'inherit',
-    fontSize: 13, boxSizing: 'border-box', background: '#fff',
-    color: '#111', outline: 'none',
-  };
+    width: '100%', padding: '8px 10px', borderRadius: 8,
+    border: '1px solid #ddd6fe', fontFamily: 'inherit',
+    fontSize: 13, boxSizing: 'border-box', background: '#faf5ff',
+    color: '#1e1b4b', outline: 'none',
+  }
   const labelStyle = {
-    display: 'block', fontSize: 11, color: '#888',
-    marginBottom: 5, letterSpacing: '0.03em', textTransform: 'lowercase',
-  };
+    display: 'block', fontSize: 11, color: '#7c3aed',
+    marginBottom: 5, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 500,
+  }
 
   return (
     <div style={{
-      border: '0.5px solid #e0e0e0', borderRadius: 12, background: '#fff',
+      border: '1px solid #ddd6fe', borderRadius: 14, background: '#fff',
       padding: '20px 24px', marginBottom: 24,
+      boxShadow: '0 4px 20px rgba(79,70,229,0.08)',
       animation: 'slideDown 0.18s ease',
     }}>
       <style>{`@keyframes slideDown { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }`}</style>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <span style={{ fontSize: 14, fontWeight: 500, color: '#111' }}>Nova notificação</span>
+      {/* Cabeçalho com gradiente */}
+      <div style={{
+        background: GRAD, borderRadius: 10, padding: '12px 16px',
+        marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', letterSpacing: '0.03em' }}>✦ Nova notificação</span>
         <button
           onClick={onClose}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#aaa', lineHeight: 1, padding: '0 2px' }}
+          style={{ background: 'rgba(255,255,255,0.2)', border: 'none', cursor: 'pointer', fontSize: 15, color: '#fff', lineHeight: 1, padding: '2px 7px', borderRadius: 6 }}
           aria-label="Fechar"
         >×</button>
       </div>
 
       {formError && (
-        <div style={{ background: '#FCEBEB', border: '0.5px solid #F7C1C1', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: '#A32D2D', marginBottom: 14 }}>
+        <div style={{ background: '#FCEBEB', border: '1px solid #F7C1C1', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#A32D2D', marginBottom: 14 }}>
           {formError}
         </div>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-        {/* Marcador + Tipo lado a lado */}
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>marcador (opcional)</label>
-            <input
-              type="text"
-              value={eventType}
-              onChange={e => setEventType(e.target.value)}
-              placeholder="Ex: alerta_venda"
-              style={inputStyle}
-            />
+            <input type="text" value={eventType} onChange={e => setEventType(e.target.value)} placeholder="Ex: alerta_venda" style={inputStyle} />
           </div>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>tipo</label>
-            <select
-              value={contentType}
-              onChange={e => setContentType(e.target.value)}
-              style={inputStyle}
-            >
+            <select value={contentType} onChange={e => setContentType(e.target.value)} style={inputStyle}>
               <option value="html">HTML</option>
               <option value="text">Texto Plano</option>
             </select>
@@ -174,86 +172,54 @@ function NewNotificationForm({ onClose, onSuccess }) {
 
         <div>
           <label style={labelStyle}>e-mail do destinatário</label>
-          <input
-            type="email"
-            value={recipient}
-            onChange={e => setRecipient(e.target.value)}
-            required
-            placeholder="email@exemplo.com"
-            style={inputStyle}
-            onKeyDown={e => e.key === 'Enter' && e.preventDefault()}
-          />
+          <input type="email" value={recipient} onChange={e => setRecipient(e.target.value)} required placeholder="email@exemplo.com" style={inputStyle} onKeyDown={e => e.key === 'Enter' && e.preventDefault()} />
         </div>
 
         <div>
           <label style={labelStyle}>assunto</label>
-          <input
-            type="text"
-            value={subject}
-            onChange={e => setSubject(e.target.value)}
-            required
-            placeholder="Assunto do e-mail"
-            style={inputStyle}
-          />
+          <input type="text" value={subject} onChange={e => setSubject(e.target.value)} required placeholder="Assunto do e-mail" style={inputStyle} />
         </div>
 
-        {/* 3. Campo de webhook adicionado abaixo do assunto */}
         <div>
           <label style={labelStyle}>url do webhook (opcional)</label>
-          <input
-            type="url"
-            value={webhookUrl}
-            onChange={e => setWebhookUrl(e.target.value)}
-            placeholder="https://webhook.site/seu-id-unico"
-            style={inputStyle}
-          />
+          <input type="url" value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} placeholder="https://webhook.site/seu-id-unico" style={inputStyle} />
         </div>
 
         <div>
           <label style={labelStyle}>corpo da mensagem</label>
-          <textarea
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            required
-            rows={6}
+          <textarea value={body} onChange={e => setBody(e.target.value)} required rows={6}
             placeholder={contentType === 'html' ? '<h1>Título</h1>\n<p>Texto</p>' : 'Digite o texto aqui...'}
             style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12, resize: 'vertical' }}
           />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ padding: '7px 16px', borderRadius: 6, border: '0.5px solid #ccc', background: 'transparent', color: '#666', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
-          >
+          <button type="button" onClick={onClose}
+            style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid #ddd6fe', background: 'transparent', color: '#7c3aed', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
             Cancelar
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: submitting ? '#555' : '#111', color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 12, fontFamily: 'inherit', transition: 'background 0.15s' }}
-          >
+          <button onClick={handleSubmit} disabled={submitting}
+            style={{ padding: '7px 20px', borderRadius: 8, border: 'none', background: submitting ? 'rgba(79,70,229,0.6)' : GRAD, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 12, fontFamily: 'inherit', fontWeight: 600, transition: 'opacity 0.15s' }}>
             {submitting ? 'Enviando...' : 'Enviar'}
           </button>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
 export default function NotificationPanel() {
-  const [logs, setLogs] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [filter, setFilter] = useState('all')
+  const [logs,     setLogs]     = useState([])
+  const [loading,  setLoading]  = useState(true)
+  const [error,    setError]    = useState(null)
+  const [filter,   setFilter]   = useState('all')
   const [showForm, setShowForm] = useState(false)
-  const pollingRef = useRef(null)
-  const [page, setPage] = useState(1)
+  const pollingRef              = useRef(null)
+  const [page,     setPage]     = useState(1)
   const [lastPage, setLastPage] = useState(1)
-  const [total, setTotal] = useState(0)
+  const [total,    setTotal]    = useState(0)
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -261,9 +227,7 @@ export default function NotificationPanel() {
     if (!silent) setLoading(true)
     setError(null)
     try {
-      // Passa a página via Query String
       const res = await api.get(`/notifications?page=${pageNumber}`)
-
       setLogs(res.data.data ?? [])
       setPage(res.data.current_page ?? 1)
       setLastPage(res.data.last_page ?? 1)
@@ -279,61 +243,63 @@ export default function NotificationPanel() {
   useEffect(() => { load(1) }, [load])
 
   // Polling: enquanto houver pendentes, consulta a cada 3 s
-
   useEffect(() => {
     const hasPending = logs.some(l => l.status === 'pending')
-
     if (hasPending) {
       pollingRef.current = setInterval(() => load(page, true), 3000)
     } else {
       clearInterval(pollingRef.current)
     }
-
     return () => clearInterval(pollingRef.current)
   }, [logs, load, page])
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const filtered = filter === 'all' ? logs : logs.filter(l => l.status === filter)
-  const pending = logs.filter(l => l.status === 'pending').length
-  const sent = logs.filter(l => l.status === 'sent').length
-  const failed = logs.filter(l => l.status === 'failed').length
+  const pending  = logs.filter(l => l.status === 'pending').length
+  const sent     = logs.filter(l => l.status === 'sent').length
+  const failed   = logs.filter(l => l.status === 'failed').length
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ padding: '24px 28px', fontFamily: 'system-ui, sans-serif', maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ padding: '28px 32px', fontFamily: 'system-ui, sans-serif', maxWidth: 920, margin: '0 auto' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '0.5px solid #e0e0e0', paddingBottom: 16, marginBottom: 24 }}>
+      {/* Header com gradiente — mesma vibe do e-mail */}
+      <div style={{
+        background: GRAD, borderRadius: 14,
+        padding: '18px 24px', marginBottom: 24,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        boxShadow: '0 4px 20px rgba(79,70,229,0.18)',
+      }}>
         <div>
-          <h1 style={{ fontSize: 18, fontWeight: 500, margin: 0, color: '#111' }}>Notificações</h1>
-          <p style={{ fontSize: 13, color: '#888', margin: '3px 0 0' }}>
+          <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#fff', letterSpacing: '0.01em' }}>✦ Notify</h1>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: '3px 0 0', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             {loading
               ? 'Carregando...'
               : error
                 ? 'Erro ao carregar dados'
                 : <>
-                  {logs.length} registro{logs.length !== 1 ? 's' : ''}
-                  {pending > 0 && (
-                    <span style={{ marginLeft: 8, fontSize: 11, color: '#854F0B' }}>
-                      · {pending} pendente{pending !== 1 ? 's' : ''} — atualizando automaticamente
-                    </span>
-                  )}
-                </>
+                    sistema de notificações
+                    {pending > 0 && (
+                      <span style={{ marginLeft: 8, color: '#fde68a' }}>
+                        · {pending} pendente{pending !== 1 ? 's' : ''} — atualizando
+                      </span>
+                    )}
+                  </>
             }
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={() => setShowForm(v => !v)}
-            style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, border: 'none', background: showForm ? '#444' : '#111', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.15s' }}
+            style={{ fontSize: 12, padding: '7px 16px', borderRadius: 8, border: '1.5px solid rgba(255,255,255,0.5)', background: showForm ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, transition: 'background 0.15s' }}
           >
             {showForm ? '× Cancelar' : '+ Nova notificação'}
           </button>
           <button
-            onClick={() => load()}
-            style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, border: '0.5px solid #ccc', background: 'transparent', color: '#666', cursor: 'pointer', fontFamily: 'inherit' }}
+            onClick={() => load(page)}
+            style={{ fontSize: 12, padding: '7px 14px', borderRadius: 8, border: '1.5px solid rgba(255,255,255,0.3)', background: 'transparent', color: 'rgba(255,255,255,0.8)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             ↻ Atualizar
           </button>
@@ -344,23 +310,23 @@ export default function NotificationPanel() {
       {showForm && (
         <NewNotificationForm
           onClose={() => setShowForm(false)}
-          onSuccess={() => { load(); setShowForm(false) }}
+          onSuccess={() => { load(1); setShowForm(false) }}
         />
       )}
 
       {/* Error */}
       {error && (
-        <div style={{ background: '#FCEBEB', border: '0.5px solid #F7C1C1', borderRadius: 8, padding: '12px 16px', fontSize: 13, color: '#A32D2D', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ background: '#FCEBEB', border: '1px solid #F7C1C1', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: '#A32D2D', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
           ⚠ {error}
         </div>
       )}
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-        <StatCard label="total de registros" value={loading ? '—' : total} />
-        <StatCard label="entregues" value={loading ? '—' : sent} color="#1D9E75" />
-        <StatCard label="com falha" value={loading ? '—' : failed} color="#E24B4A" />
-        <StatCard label="pendentes" value={loading ? '—' : pending} color={pending > 0 ? '#BA7517' : undefined} />
+        <StatCard label="total de registros" value={loading ? '—' : total} color="#4f46e5" />
+        <StatCard label="entregues"          value={loading ? '—' : sent}  color="#1D9E75" />
+        <StatCard label="com falha"          value={loading ? '—' : failed} color="#E24B4A" />
+        <StatCard label="pendentes"          value={loading ? '—' : pending} color={pending > 0 ? '#7c3aed' : '#94a3b8'} />
       </div>
 
       {/* Filters */}
@@ -370,12 +336,12 @@ export default function NotificationPanel() {
             key={f.key}
             onClick={() => setFilter(f.key)}
             style={{
-              fontSize: 12, padding: '5px 12px', borderRadius: 20,
-              border: '0.5px solid',
-              borderColor: filter === f.key ? '#111' : '#ccc',
-              background: filter === f.key ? '#111' : 'transparent',
-              color: filter === f.key ? '#fff' : '#888',
-              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+              fontSize: 12, padding: '5px 14px', borderRadius: 20,
+              border: '1px solid',
+              borderColor: filter === f.key ? 'transparent' : '#ddd6fe',
+              background: filter === f.key ? GRAD : 'transparent',
+              color: filter === f.key ? '#fff' : '#7c3aed',
+              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', fontWeight: filter === f.key ? 600 : 400,
             }}
           >
             {f.label}
@@ -384,7 +350,7 @@ export default function NotificationPanel() {
       </div>
 
       {/* Table */}
-      <div style={{ border: '0.5px solid #e0e0e0', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ border: '1px solid #ede9fe', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 8px rgba(79,70,229,0.06)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
           <colgroup>
             <col style={{ width: 52 }} />
@@ -393,10 +359,10 @@ export default function NotificationPanel() {
             <col style={{ width: '15%' }} />
             <col />
           </colgroup>
-          <thead style={{ background: '#f5f5f3' }}>
-            <tr>
+          <thead>
+            <tr style={{ background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)' }}>
               {['#', 'Evento', 'Destinatário', 'Status', 'Data'].map(h => (
-                <th key={h} style={{ fontSize: 11, fontWeight: 500, color: '#999', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '10px 16px', textAlign: 'left', borderBottom: '0.5px solid #e0e0e0' }}>
+                <th key={h} style={{ fontSize: 11, fontWeight: 600, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.07em', padding: '11px 16px', textAlign: 'left', borderBottom: '1px solid #ddd6fe' }}>
                   {h}
                 </th>
               ))}
@@ -404,36 +370,36 @@ export default function NotificationPanel() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} style={{ textAlign: 'center', padding: 32, fontSize: 13, color: '#aaa' }}>Carregando...</td></tr>
+              <tr><td colSpan={5} style={{ textAlign: 'center', padding: 36, fontSize: 13, color: '#a5b4fc' }}>Carregando...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40, fontSize: 13, color: '#bbb' }}>Nenhum registro encontrado.</td></tr>
+              <tr><td colSpan={5} style={{ textAlign: 'center', padding: 44, fontSize: 13, color: '#c4b5fd' }}>Nenhum registro encontrado.</td></tr>
             ) : (
               filtered.map(log => (
                 <tr
                   key={log.id}
-                  style={{ borderBottom: '0.5px solid #f0f0f0', transition: 'background 0.1s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  style={{ borderBottom: '1px solid #f5f3ff', transition: 'background 0.1s', background: '#fff' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#faf5ff'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#fff'}
                 >
-                  <td style={{ padding: '11px 16px', fontFamily: 'monospace', fontSize: 11, color: '#bbb' }}>
+                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 11, color: '#c4b5fd' }}>
                     {String(log.id).padStart(3, '0')}
                   </td>
-                  <td style={{ padding: '11px 16px' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: getEventColor(log.event_type), flexShrink: 0 }} />
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#1e1b4b' }}>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: getEventColor(log.event_type), flexShrink: 0 }} />
                       {log.event_type ?? '—'}
                     </span>
                   </td>
-                  <td style={{ padding: '11px 16px', fontSize: 12, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.recipient}>
+                  <td style={{ padding: '12px 16px', fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.recipient}>
                     {log.recipient ?? '—'}
                   </td>
-                  <td style={{ padding: '11px 16px' }}>
+                  <td style={{ padding: '12px 16px' }}>
                     <Badge status={log.status} />
                     {log.status === 'pending' && (
-                      <span style={{ marginLeft: 6, fontSize: 10, color: '#BA7517' }} title="Aguardando processamento">⟳</span>
+                      <span style={{ marginLeft: 6, fontSize: 10, color: '#7c3aed' }} title="Aguardando processamento">⟳</span>
                     )}
                   </td>
-                  <td style={{ padding: '11px 16px', fontSize: 12, color: '#999', fontFamily: 'monospace' }}>
+                  <td style={{ padding: '12px 16px', fontSize: 12, color: '#94a3b8', fontFamily: 'monospace' }}>
                     {formatDate(log.created_at)}
                   </td>
                 </tr>
@@ -445,21 +411,21 @@ export default function NotificationPanel() {
 
       {/* Paginação */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-        <span style={{ fontSize: 12, color: '#888' }}>
-          Mostrando página <strong style={{ color: '#111' }}>{page}</strong> de {lastPage} ({total} registros no total)
+        <span style={{ fontSize: 12, color: '#94a3b8' }}>
+          Mostrando página <strong style={{ color: '#7c3aed' }}>{page}</strong> de {lastPage} ({total} registros no total)
         </span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={() => load(page - 1)}
             disabled={page <= 1 || loading}
-            style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, border: '0.5px solid #ccc', background: 'transparent', color: '#111', cursor: page <= 1 || loading ? 'not-allowed' : 'pointer', opacity: page <= 1 || loading ? 0.4 : 1, fontFamily: 'inherit' }}
+            style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, border: '1px solid #ddd6fe', background: 'transparent', color: '#7c3aed', cursor: page <= 1 || loading ? 'not-allowed' : 'pointer', opacity: page <= 1 || loading ? 0.4 : 1, fontFamily: 'inherit' }}
           >
             ← Anterior
           </button>
           <button
             onClick={() => load(page + 1)}
             disabled={page >= lastPage || loading}
-            style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, border: '0.5px solid #ccc', background: 'transparent', color: '#111', cursor: page >= lastPage || loading ? 'not-allowed' : 'pointer', opacity: page >= lastPage || loading ? 0.4 : 1, fontFamily: 'inherit' }}
+            style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, border: '1px solid #ddd6fe', background: 'transparent', color: '#7c3aed', cursor: page >= lastPage || loading ? 'not-allowed' : 'pointer', opacity: page >= lastPage || loading ? 0.4 : 1, fontFamily: 'inherit' }}
           >
             Próxima →
           </button>
