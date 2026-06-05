@@ -251,16 +251,23 @@ export default function NotificationPanel() {
   const [filter, setFilter] = useState('all')
   const [showForm, setShowForm] = useState(false)
   const pollingRef = useRef(null)
+  const [page, setPage] = useState(1)
+  const [lastPage, setLastPage] = useState(1)
+  const [total, setTotal] = useState(0)
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
-  const load = useCallback(async (silent = false) => {
+  const load = useCallback(async (pageNumber = 1, silent = false) => {
     if (!silent) setLoading(true)
     setError(null)
     try {
-      // O Axios injeta o Bearer token automaticamente aqui
-      const res = await api.get('/notifications')
-      setLogs(res.data.data ?? []) // O Laravel paginação envelopa os itens em 'data'
+      // Passa a página via Query String
+      const res = await api.get(`/notifications?page=${pageNumber}`)
+
+      setLogs(res.data.data ?? [])
+      setPage(res.data.current_page ?? 1)
+      setLastPage(res.data.last_page ?? 1)
+      setTotal(res.data.total ?? 0)
     } catch (err) {
       setError(err.response?.data?.message || 'Não foi possível conectar ao servidor.')
     } finally {
@@ -268,21 +275,22 @@ export default function NotificationPanel() {
     }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  // Inicialização
+  useEffect(() => { load(1) }, [load])
 
-  // ── Polling: enquanto houver pendentes, consulta a cada 3 s ───────────────
+  // Polling: enquanto houver pendentes, consulta a cada 3 s
 
   useEffect(() => {
     const hasPending = logs.some(l => l.status === 'pending')
 
     if (hasPending) {
-      pollingRef.current = setInterval(() => load(true), 3000)
+      pollingRef.current = setInterval(() => load(page, true), 3000)
     } else {
       clearInterval(pollingRef.current)
     }
 
     return () => clearInterval(pollingRef.current)
-  }, [logs, load])
+  }, [logs, load, page])
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -349,7 +357,7 @@ export default function NotificationPanel() {
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-        <StatCard label="total de registros" value={loading ? '—' : logs.length} />
+        <StatCard label="total de registros" value={loading ? '—' : total} />
         <StatCard label="entregues" value={loading ? '—' : sent} color="#1D9E75" />
         <StatCard label="com falha" value={loading ? '—' : failed} color="#E24B4A" />
         <StatCard label="pendentes" value={loading ? '—' : pending} color={pending > 0 ? '#BA7517' : undefined} />
@@ -433,6 +441,29 @@ export default function NotificationPanel() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Paginação */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+        <span style={{ fontSize: 12, color: '#888' }}>
+          Mostrando página <strong style={{ color: '#111' }}>{page}</strong> de {lastPage} ({total} registros no total)
+        </span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => load(page - 1)}
+            disabled={page <= 1 || loading}
+            style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, border: '0.5px solid #ccc', background: 'transparent', color: '#111', cursor: page <= 1 || loading ? 'not-allowed' : 'pointer', opacity: page <= 1 || loading ? 0.4 : 1, fontFamily: 'inherit' }}
+          >
+            ← Anterior
+          </button>
+          <button
+            onClick={() => load(page + 1)}
+            disabled={page >= lastPage || loading}
+            style={{ fontSize: 12, padding: '6px 14px', borderRadius: 8, border: '0.5px solid #ccc', background: 'transparent', color: '#111', cursor: page >= lastPage || loading ? 'not-allowed' : 'pointer', opacity: page >= lastPage || loading ? 0.4 : 1, fontFamily: 'inherit' }}
+          >
+            Próxima →
+          </button>
+        </div>
       </div>
     </div>
   )
