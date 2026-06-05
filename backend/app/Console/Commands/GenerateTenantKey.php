@@ -16,11 +16,12 @@ class GenerateTenantKey extends Command
 
         $tenant = Tenant::create(['name' => $name]);
 
-        // Cria um token sem data de expiração
         $token = $tenant->createToken('api-key')->plainTextToken;
 
         $this->info("Tenant '{$name}' criado com sucesso!");
-        $this->warn("Guarde esta Chave de API. Ela não será mostrada novamente:");
+        $this->warn("1. Guarde esta Chave de API. Ela não será mostrada novamente:");
         $this->line($token);
+        $this->warn("2. Guarde este Webhook Secret (Para validar assinaturas HMAC):");
+        $this->line($tenant->webhook_secret);
     }
 }

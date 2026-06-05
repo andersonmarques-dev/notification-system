@@ -11,6 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class SendNotificationJob implements ShouldQueue
@@ -51,14 +52,32 @@ class SendNotificationJob implements ShouldQueue
         }
 
         try {
-            Http::timeout(5)->post($this->log->webhook_url, [
+            $this->log->loadMissing('tenant');
+            $secret = $this->log->tenant?->webhook_secret;
+
+            if (!$secret) {
+                return;
+            }
+
+            $jsonPayload = json_encode([
                 'log_id'     => $this->log->id,
                 'status'     => $status,
                 'event_type' => $this->log->event_type,
                 'message'    => $message,
                 'timestamp'  => now()->toIso8601String(),
-            ]);
+            ], JSON_THROW_ON_ERROR);
+
+            $signature = 'sha256=' . hash_hmac('sha256', $jsonPayload, $secret);
+
+            Http::timeout(5)
+                ->withHeaders(['X-Signature' => $signature])
+                ->withBody($jsonPayload, 'application/json')
+                ->post($this->log->webhook_url);
         } catch (Throwable $e) {
+            Log::warning('Webhook dispatch failed', [
+                'log_id' => $this->log->id,
+                'error'  => $e->getMessage(),
+            ]);
         }
     }
 }
