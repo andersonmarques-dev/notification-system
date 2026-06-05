@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { api, web } from "./api";
+import RegisterScreen from './contexts/RegisterScreen'
 
 // ─── Paleta ───────────────────────────────────────────────────────────────────
 
@@ -362,7 +363,7 @@ function NotificationPanel() {
 
 // ─── Tela de Login ────────────────────────────────────────────────────────────
 
-function LoginScreen() {
+function LoginScreen({ onGoToRegister }) {
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -421,6 +422,14 @@ function LoginScreen() {
           <button onClick={handleSubmit} disabled={loading} style={{ width: '100%', padding: '11px', borderRadius: 8, border: 'none', background: loading ? 'rgba(79,70,229,0.6)' : GRAD, color: '#fff', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 14, fontFamily: 'inherit', fontWeight: 600, transition: 'opacity 0.15s' }}>
             {loading ? 'Autenticando...' : 'Entrar'}
           </button>
+          {onGoToRegister && (
+            <div style={{ textAlign: 'center', marginTop: 12 }}>
+              <span style={{ fontSize: 13, color: '#94a3b8' }}>Não tem conta? </span>
+              <button onClick={onGoToRegister} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#7c3aed', fontFamily: 'inherit', fontWeight: 500, padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                Cadastre-se
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -431,6 +440,7 @@ function LoginScreen() {
 
 function MainApp() {
   const { user, loading } = useAuth()
+  const [screen, setScreen] = useState('login') // 'login' | 'register'
 
   if (loading) {
     return (
@@ -440,7 +450,11 @@ function MainApp() {
     )
   }
 
-  return user ? <NotificationPanel /> : <LoginScreen />
+  if (user) return <NotificationPanel />
+
+  if (screen === 'register') return <RegisterScreen onBackToLogin={() => setScreen('login')} />
+
+  return <LoginScreen onGoToRegister={() => setScreen('register')} />
 }
 
 // ─── Entry point ──────────────────────────────────────────────────────────────

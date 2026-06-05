@@ -32,8 +32,23 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const registerUser = async (tenant_name, user_name, email, password, password_confirmation) => {
+        await web.get('/sanctum/csrf-cookie');
+
+        await api.post('/register', {
+            tenant_name,
+            user_name,
+            email,
+            password,
+            password_confirmation
+        });
+
+        const response = await api.get('/user');
+        setUser(response.data);
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, logout, registerUser, loading }}>
             {children}
         </AuthContext.Provider>
     );
