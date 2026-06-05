@@ -20,6 +20,10 @@ class SendNotificationJob implements ShouldQueue
 
     public NotificationLog $log;
 
+    public int $tries = 3;
+
+    public array $backoff = [10, 30];
+
     public function __construct(NotificationLog $log)
     {
         $this->log = $log;
@@ -27,22 +31,20 @@ class SendNotificationJob implements ShouldQueue
 
     public function handle(): void
     {
-        try {
-            Mail::to($this->log->recipient)->send(new DynamicNotificationMail($this->log));
+        Mail::to($this->log->recipient)->send(new DynamicNotificationMail($this->log));
 
-            $this->log->update(['status' => 'sent']);
+        $this->log->update(['status' => 'sent']);
+        $this->dispatchWebhook('success', 'E-mail enviado com sucesso.');
+    }
 
-            $this->dispatchWebhook('success', 'E-mail enviado com sucesso.');
-        } catch (Throwable $e) {
-            $this->log->update([
-                'status' => 'failed',
-                'error_message' => $e->getMessage()
-            ]);
+    public function failed(Throwable $exception): void
+    {
+        $this->log->update([
+            'status' => 'failed',
+            'error_message' => $exception->getMessage()
+        ]);
 
-            $this->dispatchWebhook('failed', $e->getMessage());
-
-            throw $e;
-        }
+        $this->dispatchWebhook('failed', $exception->getMessage());
     }
 
     protected function dispatchWebhook(string $status, string $message): void
