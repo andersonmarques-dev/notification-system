@@ -23,6 +23,11 @@ class Tenant extends Authenticatable
         });
     }
 
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
+
     public function notificationLogs()
     {
         return $this->hasMany(NotificationLog::class);
