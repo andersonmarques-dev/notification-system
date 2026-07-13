@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { api, web } from "./api";
+import { api } from "./api";
 import RegisterScreen from './contexts/RegisterScreen'
 
 // ─── Paleta ───────────────────────────────────────────────────────────────────

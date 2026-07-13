@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { api, web } from '../api';
+import { api, getToken, setToken, clearToken } from '../api';
 
 const AuthContext = createContext();
 
@@ -7,44 +7,47 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Verifica se a sessão já existe ao carregar a página
+    // Ao carregar a página, se houver um token salvo, valida-o buscando o usuário atual
     useEffect(() => {
+        if (!getToken()) {
+            setLoading(false);
+            return;
+        }
+
         api.get('/user')
             .then(response => setUser(response.data))
-            .catch(() => setUser(null))
+            .catch(() => {
+                clearToken();
+                setUser(null);
+            })
             .finally(() => setLoading(false));
     }, []);
 
     const login = async (email, password) => {
-        // 1. Solicita o cookie de proteção contra XSS/CSRF
-        await web.get('/sanctum/csrf-cookie');
-
-        // 2. Envia as credenciais
-        await api.post('/login', { email, password });
-
-        // 3. Recupera os dados do usuário atrelados à nova sessão
-        const response = await api.get('/user');
-        setUser(response.data);
+        const response = await api.post('/login', { email, password });
+        setToken(response.data.token);
+        setUser(response.data.user);
     };
 
     const logout = async () => {
-        await api.post('/logout');
-        setUser(null);
+        try {
+            await api.post('/logout');
+        } finally {
+            clearToken();
+            setUser(null);
+        }
     };
 
     const registerUser = async (tenant_name, user_name, email, password, password_confirmation) => {
-        await web.get('/sanctum/csrf-cookie');
-
-        await api.post('/register', {
+        const response = await api.post('/register', {
             tenant_name,
             user_name,
             email,
             password,
             password_confirmation
         });
-
-        const response = await api.get('/user');
-        setUser(response.data);
+        setToken(response.data.token);
+        setUser(response.data.user);
     };
 
     return (
