@@ -42,7 +42,6 @@ return [
         ],
         'sanctum' => [
             'driver' => 'sanctum',
-            'provider' => 'tenants', // Mude de 'users' para 'tenants'
         ],
     ],
 

@@ -20,13 +20,15 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
-
             $user = Auth::user();
             $user->load('tenant');
+
+            $token = $user->createToken('spa-token')->plainTextToken;
+
             return response()->json([
                 'message' => 'Login realizado com sucesso',
-                'user' => $user
+                'user' => $user,
+                'token' => $token,
             ]);
         }
 
@@ -37,10 +39,7 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        Auth::guard('web')->logout();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => 'Logout realizado com sucesso']);
     }
@@ -75,12 +74,13 @@ class AuthController extends Controller
                 return ['user' => $user, 'tenant' => $tenant];
             });
 
-            Auth::login($data['user']);
-            $request->session()->regenerate();
+            $data['user']->load('tenant');
+            $token = $data['user']->createToken('spa-token')->plainTextToken;
 
             return response()->json([
                 'message' => 'Conta e infraestrutura provisionadas com sucesso.',
-                'user' => $data['user']->load('tenant')
+                'user' => $data['user'],
+                'token' => $token,
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
