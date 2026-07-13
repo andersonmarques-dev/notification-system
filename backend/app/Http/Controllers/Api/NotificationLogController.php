@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class NotificationLogController extends Controller
 {
@@ -53,7 +54,17 @@ class NotificationLogController extends Controller
         $data = $request->validated();
         $data['tenant_id'] = $tenant->id;
 
-        $log = $this->notificationService->processNewNotification($data);
+        try {
+            $log = $this->notificationService->processNewNotification($data);
+        } catch (\Exception $e) {
+            Log::error('Erro ao processar a notificação: ' . $e->getMessage(), [
+                'exception' => $e,
+                'data' => $data,
+            ]);
+            return response()->json([
+                'message' => 'Erro ao processar a notificação: ' . $e->getMessage(),
+            ], 500);
+        }
 
         return response()->json([
             'message' => 'Evento recebido com sucesso e enfileirado.',
