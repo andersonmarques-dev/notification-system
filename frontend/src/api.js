@@ -4,9 +4,10 @@ const BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 const TOKEN_KEY = 'auth_token';
 
-export const getToken = () => localStorage.getItem(TOKEN_KEY);
-export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
-export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+// Use sessionStorage instead of localStorage to mitigate XSS token theft (S10)
+export const getToken = () => sessionStorage.getItem(TOKEN_KEY);
+export const setToken = (token) => sessionStorage.setItem(TOKEN_KEY, token);
+export const clearToken = () => sessionStorage.removeItem(TOKEN_KEY);
 
 // Instância única para rotas da API (prefixo /api), autenticada via Bearer token
 export const api = axios.create({
@@ -25,5 +26,17 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Interceptor para lidar com 401 (token expirado/inválido) (R4)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      clearToken();
+      window.location.reload();
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

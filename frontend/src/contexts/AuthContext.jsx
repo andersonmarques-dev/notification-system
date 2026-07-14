@@ -25,8 +25,15 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         const response = await api.post('/login', { email, password });
-        setToken(response.data.token);
-        setUser(response.data.user);
+        const token = response.data?.token;
+        const userData = response.data?.user;
+
+        if (!token || !userData) {
+            throw new Error('Resposta inválida do servidor.');
+        }
+
+        setToken(token);
+        setUser(userData);
     };
 
     const logout = async () => {
@@ -46,8 +53,16 @@ export const AuthProvider = ({ children }) => {
             password,
             password_confirmation
         });
-        setToken(response.data.token);
-        setUser(response.data.user);
+
+        const token = response.data?.token;
+        const userData = response.data?.user;
+
+        if (!token || !userData) {
+            throw new Error('Resposta inválida do servidor.');
+        }
+
+        setToken(token);
+        setUser(userData);
     };
 
     return (
@@ -57,4 +72,10 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth deve ser usado dentro de um AuthProvider.');
+    }
+    return context;
+};
