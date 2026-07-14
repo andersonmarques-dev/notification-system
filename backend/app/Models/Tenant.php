@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable; // Importação correta
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Str;
 
@@ -14,6 +15,8 @@ class Tenant extends Authenticatable
     use HasApiTokens, HasUuids, HasFactory;
 
     protected $fillable = ['name', 'is_active', 'webhook_secret'];
+    
+    protected $hidden = ['webhook_secret'];
 
     protected static function booted(): void
     {
@@ -24,12 +27,12 @@ class Tenant extends Authenticatable
         });
     }
 
-    public function users()
+    public function users(): HasMany
     {
         return $this->hasMany(User::class);
     }
 
-    public function notificationLogs()
+    public function notificationLogs(): HasMany
     {
         return $this->hasMany(NotificationLog::class);
     }
