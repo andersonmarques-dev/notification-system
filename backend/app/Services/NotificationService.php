@@ -15,7 +15,7 @@ class NotificationService
 
             SendNotificationJob::dispatch($log);
         } catch (\Exception $e) {
-            throw new \Exception('Erro ao processar a notificação: ' . $e->getMessage());
+            throw new \RuntimeException('Erro ao processar a notificação: ' . $e->getMessage(), 0, $e);
         }
 
         return $log;

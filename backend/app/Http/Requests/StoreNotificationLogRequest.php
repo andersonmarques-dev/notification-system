@@ -28,7 +28,7 @@ class StoreNotificationLogRequest extends FormRequest
         return [
             'recipient'    => ['required', 'email'],
             'subject'      => ['required', 'string', 'max:255'],
-            'body'         => ['required', 'string'],
+            'body'         => ['required', 'string', 'max:65535'],
             'content_type' => ['required', 'string', 'in:html,text'],
             'event_type'   => ['nullable', 'string', 'max:100'],
             'webhook_url'  => ['nullable', 'url', 'max:255'],

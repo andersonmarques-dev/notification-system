@@ -33,6 +33,10 @@ class NotificationLogController extends Controller
             abort(403, 'Acesso negado: O usuário autenticado é órfão e não possui uma empresa (Tenant) vinculada.');
         }
 
+        if (! $tenant->is_active) {
+            abort(403, 'Acesso negado: Tenant desativado.');
+        }
+
         return $tenant;
     }
 
@@ -62,7 +66,7 @@ class NotificationLogController extends Controller
                 'data' => $data,
             ]);
             return response()->json([
-                'message' => 'Erro ao processar a notificação: ' . $e->getMessage(),
+                'message' => 'Erro ao processar a notificação.',
             ], 500);
         }
 

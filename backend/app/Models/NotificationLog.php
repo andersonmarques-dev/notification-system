@@ -25,11 +25,14 @@ class NotificationLog extends Model
 
     protected static function booted()
     {
-        static::creating(function ($model) {
+        $sanitizeHtml = function ($model) {
             if ($model->content_type === 'html' && !empty($model->body)) {
                 $model->body = clean($model->body);
             }
-        });
+        };
+
+        static::creating($sanitizeHtml);
+        static::updating($sanitizeHtml);
     }
     
     public function tenant()
