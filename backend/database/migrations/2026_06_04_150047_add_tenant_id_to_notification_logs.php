@@ -23,7 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('notification_logs', function (Blueprint $table) {
-            //
+            $table->dropForeign(['tenant_id']);
+            $table->dropColumn('tenant_id');
         });
     }
 };
