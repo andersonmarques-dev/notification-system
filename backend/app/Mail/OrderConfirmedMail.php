@@ -21,7 +21,7 @@ class OrderConfirmedMail extends Mailable
      */
     public function __construct(array $payload)
     {
-        $this->$payload = $payload;
+        $this->payload = $payload;
     }
 
     public function build()
