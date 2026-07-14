@@ -67,12 +67,13 @@ class AuthController extends Controller
                     'name' => $validated['tenant_name'],
                 ]);
 
-                $user = User::create([
-                    'tenant_id' => $tenant->id,
+                $user = new User([
                     'name' => $validated['user_name'],
                     'email' => $validated['email'],
                     'password' => Hash::make($validated['password']),
                 ]);
+                $user->tenant_id = $tenant->id;
+                $user->save();
 
                 return ['user' => $user, 'tenant' => $tenant];
             });
@@ -86,9 +87,9 @@ class AuthController extends Controller
                 'token' => $token,
             ], 201);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Registration failed', ['exception' => $e]);
             return response()->json([
                 'message' => 'Falha no provisionamento da conta.',
-                'error' => $e->getMessage()
             ], 500);
         }
     }
