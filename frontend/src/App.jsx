@@ -226,12 +226,22 @@ function NotificationPanel() {
 
   useEffect(() => {
     const hasPending = logs.some(l => l.status === 'pending')
-    if (hasPending) {
-      pollingRef.current = setInterval(() => load(page, true), 3000)
-    } else {
-      clearInterval(pollingRef.current)
+    if (!hasPending) return
+
+    let cancelled = false
+    const poll = async () => {
+      if (cancelled) return
+      await load(page, true)
+      if (!cancelled) {
+        pollingRef.current = setTimeout(poll, 3000)
+      }
     }
-    return () => clearInterval(pollingRef.current)
+    pollingRef.current = setTimeout(poll, 3000)
+
+    return () => {
+      cancelled = true
+      clearTimeout(pollingRef.current)
+    }
   }, [logs, load, page])
 
   const filtered = filter === 'all' ? logs : logs.filter(l => l.status === filter)
@@ -377,7 +387,15 @@ function LoginScreen({ onGoToRegister }) {
     try {
       await login(email, password)
     } catch (err) {
-      setError('Credenciais inválidas. Tente novamente.')
+      if (err.response?.status === 401 || err.response?.status === 422) {
+        setError('Credenciais inválidas. Tente novamente.')
+      } else if (err.response?.status >= 500) {
+        setError('Servidor indisponível. Tente novamente mais tarde.')
+      } else if (!err.response) {
+        setError('Sem conexão com o servidor. Verifique sua internet.')
+      } else {
+        setError('Erro inesperado. Tente novamente.')
+      }
     } finally {
       setLoading(false)
     }
@@ -400,7 +418,7 @@ function LoginScreen({ onGoToRegister }) {
         </div>
 
         {/* Formulário */}
-        <div style={{ padding: '28px 32px 32px' }}>
+        <form onSubmit={handleSubmit} style={{ padding: '28px 32px 32px' }}>
           <div style={{ fontSize: 15, fontWeight: 600, color: '#1e1b4b', marginBottom: 20 }}>Acesso ao sistema</div>
 
           {error && (
@@ -411,15 +429,15 @@ function LoginScreen({ onGoToRegister }) {
 
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 11, color: '#7c3aed', marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 500 }}>E-mail</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="seu@email.com" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleSubmit(e)} />
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="seu@email.com" style={inputStyle} />
           </div>
 
           <div style={{ marginBottom: 24 }}>
             <label style={{ display: 'block', fontSize: 11, color: '#7c3aed', marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 500 }}>Senha</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••••" style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleSubmit(e)} />
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••••" style={inputStyle} />
           </div>
 
-          <button onClick={handleSubmit} disabled={loading} style={{ width: '100%', padding: '11px', borderRadius: 8, border: 'none', background: loading ? 'rgba(79,70,229,0.6)' : GRAD, color: '#fff', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 14, fontFamily: 'inherit', fontWeight: 600, transition: 'opacity 0.15s' }}>
+          <button type="submit" disabled={loading} style={{ width: '100%', padding: '11px', borderRadius: 8, border: 'none', background: loading ? 'rgba(79,70,229,0.6)' : GRAD, color: '#fff', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 14, fontFamily: 'inherit', fontWeight: 600, transition: 'opacity 0.15s' }}>
             {loading ? 'Autenticando...' : 'Entrar'}
           </button>
           {onGoToRegister && (
@@ -430,7 +448,7 @@ function LoginScreen({ onGoToRegister }) {
               </button>
             </div>
           )}
-        </div>
+        </form>
       </div>
     </div>
   )
